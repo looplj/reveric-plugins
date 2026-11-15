@@ -69,6 +69,46 @@ export async function discover(root) {
   return plugins;
 }
 
+function stableJson(value) {
+  if (Array.isArray(value)) return value.map(stableJson);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, stableJson(value[key])]));
+  }
+  return value;
+}
+
+// Other workspace packages do not affect this plugin's build. Shared dependency
+// entries (the root package and hoisted node_modules) still do.
+function relevantLockPackage(key, value, pluginDirectory) {
+  if (key === '' || key === pluginDirectory || key.startsWith(`${pluginDirectory}/`)) return true;
+  if (key.startsWith('plugins/')) return false;
+  const resolved = value?.resolved;
+  if (value?.link === true && typeof resolved === 'string'
+    && (resolved === 'plugins' || resolved.startsWith('plugins/'))) {
+    return resolved === pluginDirectory || resolved.startsWith(`${pluginDirectory}/`);
+  }
+  return true;
+}
+
+export function lockfileInput(lockText, pluginDirectory) {
+  let lock;
+  try { lock = JSON.parse(lockText); }
+  catch { return lockText; }
+  if (!lock || typeof lock !== 'object' || Array.isArray(lock) || !lock.packages || typeof lock.packages !== 'object' || Array.isArray(lock.packages)) {
+    return JSON.stringify(stableJson(lock));
+  }
+  const packages = {};
+  for (const key of Object.keys(lock.packages).sort()) {
+    if (relevantLockPackage(key, lock.packages[key], pluginDirectory)) packages[key] = lock.packages[key];
+  }
+  const projected = {};
+  if (lock.lockfileVersion !== undefined) projected.lockfileVersion = lock.lockfileVersion;
+  if (lock.requires !== undefined) projected.requires = lock.requires;
+  if (lock.dependencies !== undefined) projected.dependencies = lock.dependencies;
+  projected.packages = packages;
+  return JSON.stringify(stableJson(projected));
+}
+
 // Hash all declared build inputs, not just this push's diff. A failed release
 // therefore remains eligible on the next run.
 export async function fingerprint(root, plugin) {
@@ -82,7 +122,9 @@ export async function fingerprint(root, plugin) {
   const hash = createHash('sha256');
   hash.update('reveric-plugin-inputs-v1\0');
   for (const path of paths) {
-    const data = await readFile(join(root, path));
+    const data = path === 'package-lock.json'
+      ? Buffer.from(lockfileInput(await readFile(join(root, path), 'utf8'), plugin.directory))
+      : await readFile(join(root, path));
     hash.update(`${path}\0${data.length}\0`);
     hash.update(data);
   }

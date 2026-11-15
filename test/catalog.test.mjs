@@ -81,6 +81,46 @@ test('release fingerprints ignore tests/readmes, include source/lockfile/sdk, is
   assert.notEqual(await fingerprint(root, alpha), sdk);
 });
 
+function workspaceLock(slugs) {
+  const packages = {
+    '': { devDependencies: { esbuild: '0.25.12' } },
+    'node_modules/esbuild': { version: '0.25.12' },
+  };
+  for (const slug of slugs) {
+    packages[`node_modules/@reveric-plugins/${slug}`] = { resolved: `plugins/${slug}`, link: true };
+    packages[`plugins/${slug}`] = { name: `@reveric-plugins/${slug}`, devDependencies: { esbuild: '0.25.12' } };
+  }
+  return { lockfileVersion: 3, packages };
+}
+
+test('lockfile entries for other plugins do not schedule a release', async t => {
+  const root = await fixture(t, ['alpha', 'beta']);
+  const lock = workspaceLock(['alpha', 'beta']);
+  await put(root, 'package-lock.json', lock);
+  const plugins = await discover(root);
+  const releases = (await plan(root, plugins, [])).map(plugin => ({
+    slug: plugin.slug, id: plugin.manifest.id, inputHash: plugin.inputHash, version: plugin.version,
+  }));
+  const [alpha] = plugins;
+  const published = await fingerprint(root, alpha);
+
+  lock.packages['node_modules/@reveric-plugins/gamma'] = { resolved: 'plugins/gamma', link: true };
+  lock.packages['plugins/gamma'] = { name: '@reveric-plugins/gamma', devDependencies: { esbuild: '0.25.12' } };
+  await put(root, 'package-lock.json', lock);
+  assert.equal(await fingerprint(root, alpha), published);
+  assert.deepEqual(await plan(root, plugins, releases), []);
+
+  lock.packages['plugins/beta'].devDependencies = { esbuild: '0.25.13' };
+  await put(root, 'package-lock.json', lock);
+  assert.equal(await fingerprint(root, alpha), published);
+  assert.deepEqual((await plan(root, plugins, releases)).map(plugin => plugin.slug), ['beta']);
+
+  lock.packages['plugins/beta'].devDependencies = { esbuild: '0.25.12' };
+  lock.packages['node_modules/esbuild'] = { version: '0.26.0' };
+  await put(root, 'package-lock.json', lock);
+  assert.deepEqual((await plan(root, plugins, releases)).map(plugin => plugin.slug).sort(), ['alpha', 'beta']);
+});
+
 test('auto patch and explicit version floors do not repeatedly increment minor/major', () => {
   assert.equal(nextVersion('1.0.0'), '1.0.0');
   assert.equal(nextVersion('1.0.0', '1.0.8'), '1.0.9');
