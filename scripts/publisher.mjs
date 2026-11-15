@@ -92,7 +92,8 @@ export async function publishTask(root, task, github, releases, sourceCommit, { 
       pluginApiVersion: task.manifest.pluginApiVersion, platforms: task.platforms,
       repository: `https://github.com/${github.repository}`,
       releaseUrl: `https://github.com/${github.repository}/releases/tag/${encodeURIComponent(tag)}`,
-      asset, url: uploaded.browser_download_url, size: bytes.length, sha256: sha256(bytes),
+      asset, url: `https://github.com/${github.repository}/releases/download/${tag}/${asset}`,
+      size: bytes.length, sha256: sha256(bytes),
     };
     if (uploaded.size !== bytes.length || (uploaded.digest && uploaded.digest !== `sha256:${metadata.sha256}`)) {
       throw new Error('Uploaded ZIP integrity mismatch');

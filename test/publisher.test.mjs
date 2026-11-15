@@ -30,6 +30,11 @@ function fakeApi() {
         if (failPublish) throw new Error('temporary publish failure');
         const release = this.releases.find(r => path === `/releases/${r.id}`);
         Object.assign(release, options.body);
+        if (release.draft === false) {
+          for (const asset of release.assets) {
+            asset.browser_download_url = `https://github.com/${this.repository}/releases/download/${release.tag_name}/${asset.name}`;
+          }
+        }
         return release;
       }
       throw new Error(`Unexpected request: ${path}`);
@@ -37,7 +42,7 @@ function fakeApi() {
     async upload(release, name, payload) {
       assert.equal(release.draft, true);
       const asset = { id: ++sequence, name, state: 'uploaded', size: payload.length, digest: `sha256:${sha256(payload)}`,
-        browser_download_url: `https://github.com/${this.repository}/releases/download/${release.tag_name}/${name}` };
+        browser_download_url: `https://github.com/${this.repository}/releases/download/untagged-0123456789abcdef/${name}` };
       release.assets = release.assets.filter(a => a.name !== name).concat(asset);
       contents.set(name, payload);
       return asset;
@@ -89,13 +94,26 @@ test('test/build failures create no release', async () => {
   assert.equal(api.calls.length, 0);
 });
 
-test('index validation rejects changed bytes, foreign download URLs, and missing assets', async () => {
+test('index validation rejects changed bytes, foreign download URLs, and missing assets, while normalizing legacy draft URLs', async () => {
   const api = fakeApi();
   const metadata = await publishTask('.', task, api, [], commit, hooks);
   const release = api.releases[0];
+  assert.equal(metadata.url, `https://github.com/${api.repository}/releases/download/alpha/v1.0.0/example.alpha-1.0.0.zip`);
+  assert.doesNotThrow(() => validateRelease(
+    { ...metadata, url: `https://github.com/${api.repository}/releases/download/untagged-306c9b2546576dc98e9f/${metadata.asset}` },
+    release,
+    api.repository,
+  ));
   assert.throws(() => validateRelease({ ...metadata, sha256: '0'.repeat(64) }, release, api.repository), /Invalid/);
   assert.throws(() => validateRelease({ ...metadata, url: 'https://example.com/plugin.zip' }, release, api.repository), /Invalid/);
   assert.throws(() => validateRelease(metadata, { ...release, assets: [] }, api.repository), /Invalid/);
+
+  const gh = new GitHub(api.repository, null, async () => new Response(JSON.stringify({
+    ...metadata,
+    url: `https://github.com/${api.repository}/releases/download/untagged-306c9b2546576dc98e9f/${metadata.asset}`,
+  })));
+  const [resolved] = await gh.published([release]);
+  assert.equal(resolved.url, metadata.url);
 });
 
 test('GitHub pagination reads every page; published catalog excludes drafts and unrelated releases', async () => {

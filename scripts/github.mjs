@@ -53,7 +53,8 @@ export class GitHub {
       if (!asset || asset.size > 256 * 1024 || asset.state !== 'uploaded') throw new Error(`Missing/invalid release.json: ${release.tag_name}`);
       const data = JSON.parse((await this.request(`/releases/assets/${asset.id}`, { raw: true })).toString('utf8'));
       validateRelease(data, release, this.repository);
-      result.push(data);
+      const zip = release.assets.find(a => a.name === data.asset);
+      result.push(zip?.browser_download_url ? { ...data, url: zip.browser_download_url } : data);
     }
     return result;
   }
@@ -69,6 +70,14 @@ export class GitHub {
   }
 }
 
+function isDraftAssetUrl(url, repository, asset) {
+  if (typeof url !== 'string') return false;
+  const prefix = `https://github.com/${repository}/releases/download/untagged-`;
+  const suffix = `/${asset}`;
+  if (!url.startsWith(prefix) || !url.endsWith(suffix)) return false;
+  return /^[a-f0-9]+$/.test(url.slice(prefix.length, url.length - suffix.length));
+}
+
 export function validateRelease(data, release, repository) {
   const zip = release.assets.find(a => a.name === data.asset);
   const expectedUrl = `https://github.com/${repository}/releases/download/${encodeURIComponent(release.tag_name)}/${data.asset}`;
@@ -81,7 +90,8 @@ export function validateRelease(data, release, repository) {
     || typeof data.releaseUrl !== 'string' || decodeURIComponent(data.releaseUrl) !== decodeURIComponent(release.html_url)
     || !zip || zip.state !== 'uploaded' || zip.size !== data.size
     || !Number.isSafeInteger(data.size) || data.size <= 0 || data.size > 10 * 1024 * 1024
-    || !actualUrl || typeof data.url !== 'string' || decodeURIComponent(actualUrl) !== decodeURIComponent(data.url)
+    || !actualUrl || typeof data.url !== 'string'
+    || (decodeURIComponent(actualUrl) !== decodeURIComponent(data.url) && !isDraftAssetUrl(data.url, repository, data.asset))
     || decodeURIComponent(actualUrl) !== decodeURIComponent(expectedUrl)
     || !/^[a-f0-9]{64}$/.test(data.sha256 ?? '')
     || (zip.digest && zip.digest !== `sha256:${data.sha256}`)
