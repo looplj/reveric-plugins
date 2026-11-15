@@ -1,0 +1,127 @@
+{
+  "id": "reveric.vercel-search",
+  "name": {
+    "en": "Vercel Search",
+    "zh-CN": "Vercel 搜索"
+  },
+  "description": {
+    "en": "Search the web through Vercel AI Gateway. Choose a chat model and which search tools it calls.",
+    "zh-CN": "通过 Vercel AI Gateway 搜索网页。可配置主模型，以及让它调用哪些搜索工具。"
+  },
+  "version": "1.0.0",
+  "author": "Reveric",
+  "pluginApiVersion": "^1",
+  "main": "dist/index.js",
+  "settings": {
+    "fields": {
+      "apiKey": {
+        "type": "secret",
+        "title": "API Key",
+        "description": {
+          "en": "Vercel AI Gateway API key.",
+          "zh-CN": "Vercel AI Gateway API Key。"
+        },
+        "required": true
+      },
+      "primaryModel": {
+        "type": "combo",
+        "title": {
+          "en": "Primary model",
+          "zh-CN": "主模型"
+        },
+        "description": {
+          "en": "AI Gateway model id that supports tool calling. Pick a suggestion or type another id.",
+          "zh-CN": "支持工具调用的 AI Gateway 模型 ID。可以选建议项，也可以自己输入。"
+        },
+        "required": true,
+        "maxLength": 200,
+        "default": "minimax/minimax-m3.1-flash",
+        "options": [
+          {
+            "value": "minimax/minimax-m3.1-flash",
+            "label": "MiniMax M3.1 Flash"
+          },
+          {
+            "value": "meituan/longcat-2.5",
+            "label": "LongCat 2.5"
+          },
+          {
+            "value": "inclusionai/ling-3.1-flash",
+            "label": "Ling 3.1 Flash"
+          },
+          {
+            "value": "google/gemma-4-26b-a4b-it",
+            "label": "Gemma 4 26B"
+          },
+          {
+            "value": "xiaomi/mimo-v2.6-flash",
+            "label": "MiMo V2.6 Flash"
+          },
+          {
+            "value": "deepseek/deepseek-v4.1-flash-1017",
+            "label": {
+              "zh-CN": "DeepSeek V4.1 Flash",
+              "en": "DeepSeek V4.1 Flash"
+            }
+          },
+          {
+            "value": "zai/glm-5.3-flash",
+            "label": "GLM 5.3 Flash"
+          }
+        ]
+      },
+      "prompt": {
+        "type": "text",
+        "title": {
+          "en": "Prompt",
+          "zh-CN": "提示词"
+        },
+        "description": {
+          "en": "Instructions sent with every search. Leave blank to use the default.",
+          "zh-CN": "每次搜索都会附上这段提示词。留空则使用默认提示词。"
+        },
+        "maxLength": 4000,
+        "default": "使用提供的所有 search tool 搜索相关内容，搜索关键字和用户给的关键字一样，并且把结果按照 {\"results\":[{\"source\":\"工具名\",\"title\":\"标题\",\"url\":\"链接\",\"snippet\":\"摘要\"}]} 格式返回，不要做任何其他解读。只输出这个 JSON 对象，不要使用 Markdown。"
+      },
+      "searchDeepseek": {
+        "type": "boolean",
+        "title": "DeepSeek Search",
+        "default": true
+      },
+      "searchExa": {
+        "type": "boolean",
+        "title": "Exa Search",
+        "default": false
+      },
+      "searchParallel": {
+        "type": "boolean",
+        "title": "Parallel Search",
+        "default": false
+      },
+      "searchPerplexity": {
+        "type": "boolean",
+        "title": "Perplexity Search",
+        "default": false
+      },
+      "searchTako": {
+        "type": "boolean",
+        "title": "Tako Search",
+        "default": false
+      },
+      "searchBrowserbase": {
+        "type": "boolean",
+        "title": "Browserbase Search",
+        "default": false
+      }
+    },
+    "actions": {
+      "verifyApiKey": {
+        "title": {
+          "en": "Verify API Key",
+          "zh-CN": "验证 API Key"
+        },
+        "requires": ["apiKey"]
+      }
+    }
+  }
+}

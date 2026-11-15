@@ -1,0 +1,19 @@
+{
+  "VercelSearch": {
+    "name": "VercelSearch",
+    "description": "使用 Vercel AI Gateway 上已启用的搜索工具检索网页。query 必须与用户给出的关键字一致，不要改写。",
+    "inputSchema": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "搜索关键字，1 到 128 个字符，不能全为空白，且必须与用户给出的关键字一致。"
+        }
+      },
+      "required": ["query"],
+      "additionalProperties": false
+    }
+  }
+}

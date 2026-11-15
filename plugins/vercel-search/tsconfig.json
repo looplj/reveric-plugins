@@ -1,0 +1,7 @@
+{
+  "extends": "reveric-plugin-sdk/tsconfig.base.json",
+  "compilerOptions": {
+    "resolveJsonModule": true
+  },
+  "include": ["src"]
+}
