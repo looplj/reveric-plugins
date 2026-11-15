@@ -1,0 +1,22 @@
+{
+  "name": "reveric-plugins",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "plugins/*"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check": "node scripts/cli.mjs check",
+    "plan": "node scripts/cli.mjs plan",
+    "index": "node scripts/cli.mjs index"
+  },
+  "devDependencies": {
+    "fflate": "0.8.3",
+    "reveric-plugin-sdk": "file:vendor/reveric-plugin-sdk-0.1.1.tgz",
+    "semver": "7.8.6"
+  }
+}
