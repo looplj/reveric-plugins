@@ -52,16 +52,15 @@ test('discovers directories and rejects duplicate identities and missing tests',
   await assert.rejects(discover(root), /test script/);
 });
 
-test('PR detection selects local changes and shared changes, including test-only changes', async t => {
+test('PR detection selects local changes, including test-only changes', async t => {
   const plugins = await discover(await fixture(t, ['alpha', 'beta']));
   assert.deepEqual(affectedPlugins(plugins, ['plugins/alpha/test/plugin.mjs']).map(p => p.slug), ['alpha']);
-  assert.equal(affectedPlugins(plugins, ['shared/model.ts']).length, 2);
   assert.equal(affectedPlugins(plugins, ['vendor/reveric-plugin-sdk-0.1.1.tgz']).length, 2);
   assert.equal(affectedPlugins(plugins, ['package-lock.json']).length, 2);
   assert.equal(affectedPlugins(plugins, ['README.md']).length, 0);
 });
 
-test('release fingerprints ignore tests/readmes, include source/shared/lockfile, isolate other plugins', async t => {
+test('release fingerprints ignore tests/readmes, include source/lockfile/sdk, isolate other plugins', async t => {
   const root = await fixture(t, ['alpha', 'beta']);
   const [alpha] = await discover(root);
   const first = await fingerprint(root, alpha);
@@ -72,12 +71,9 @@ test('release fingerprints ignore tests/readmes, include source/shared/lockfile,
   await put(root, 'plugins/alpha/src/index.ts', 'changed own plugin');
   const own = await fingerprint(root, alpha);
   assert.notEqual(own, first);
-  await put(root, 'shared/provider.ts', 'shared implementation');
-  const shared = await fingerprint(root, alpha);
-  assert.notEqual(shared, own);
   await put(root, 'package-lock.json', { changed: true });
   const locked = await fingerprint(root, alpha);
-  assert.notEqual(locked, shared);
+  assert.notEqual(locked, own);
   await put(root, 'vendor/sdk.tgz', 'sdk package bytes');
   const sdk = await fingerprint(root, alpha);
   assert.notEqual(sdk, locked);

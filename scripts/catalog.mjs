@@ -70,11 +70,10 @@ export async function discover(root) {
 }
 
 // Hash all declared build inputs, not just this push's diff. A failed release
-// therefore remains eligible on the next run. Shared changes affect all plugins.
+// therefore remains eligible on the next run.
 export async function fingerprint(root, plugin) {
   const paths = [
     ...(await filesUnder(root, plugin.directory)).filter(isReleaseInput),
-    ...(await filesUnder(root, 'shared')).filter(isReleaseInput),
     ...(await filesUnder(root, 'vendor')).filter(isReleaseInput),
     ...(await filesUnder(root, 'scripts')).filter(isReleaseInput),
     ...(await filesUnder(root, '.github/workflows')).filter(isReleaseInput),
@@ -92,7 +91,7 @@ export async function fingerprint(root, plugin) {
 
 export function affectedPlugins(plugins, changedPaths) {
   const all = changedPaths.some(path =>
-    /^(shared\/|vendor\/|scripts\/|test\/|\.github\/workflows\/)/.test(path)
+    /^(vendor\/|scripts\/|test\/|\.github\/workflows\/)/.test(path)
     || ['package.json', 'package-lock.json', '.nvmrc'].includes(path));
   return plugins.filter(plugin => all || changedPaths.some(path => path.startsWith(`${plugin.directory}/`)));
 }
