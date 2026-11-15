@@ -54,14 +54,27 @@ async function headers(ctx: ProviderContext) {
     );
   return { Authorization: `Bearer ${key}`, Accept: "application/json" };
 }
-function decode(status: number, body: unknown): JsonObject {
+function failureCode(status: number, allowNotFound: boolean): string {
+  if (status === 401 || status === 403) return "authentication";
+  if (status === 429) return "rate_limited";
+  if (status === 404 && allowNotFound) return "not_found";
+  if (status >= 500) return "unavailable";
+  return "rejected";
+}
+function decode(
+  status: number,
+  body: unknown,
+  { allowNotFound = false }: { allowNotFound?: boolean } = {},
+): JsonObject {
   let value = body;
   if (typeof body === "string") {
     try {
       value = JSON.parse(body);
     } catch {
       throw new PluginError(
-        "invalid_response",
+        status >= 200 && status < 300
+          ? "invalid_response"
+          : failureCode(status, allowNotFound),
         `Xiaoyunque HTTP ${status}: invalid JSON`,
       );
     }
@@ -70,7 +83,7 @@ function decode(status: number, body: unknown): JsonObject {
     throw new PluginError("invalid_response", "Invalid Xiaoyunque response");
   if (status < 200 || status >= 300 || (value.ret !== "0" && value.ret !== 0)) {
     throw new PluginError(
-      "provider_error",
+      failureCode(status, allowNotFound),
       typeof value.errmsg === "string" && value.errmsg.trim()
         ? value.errmsg
         : `Xiaoyunque HTTP ${status}, ret=${String(value.ret)}`,
@@ -282,7 +295,9 @@ export function createXiaoyunqueProvider(): ProviderHandlers {
             timeoutMs: 300000,
           },
         );
-        const data = decode(result.status, result.body);
+        const data = decode(result.status, result.body, {
+          allowNotFound: true,
+        });
         if (data.run_id !== input.remoteTaskId || data.thread_id !== thread)
           throw new PluginError("invalid_response", "Task identity mismatch");
         switch (String(data.run_state)) {

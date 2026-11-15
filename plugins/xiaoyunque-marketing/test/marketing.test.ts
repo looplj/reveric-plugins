@@ -290,9 +290,38 @@ test("rejects unuploaded references and unsupported resolutions before network",
 test("preserves service errors and rejects missing key and non-JSON responses", async () => {
   const f = fixture();
   f.respond({ status: 200, body: { ret: "42", errmsg: "余额不足" } });
-  await assert.rejects(provider.video!.submit(f.input, f.ctx), /余额不足/);
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "rejected",
+    message: "余额不足",
+  });
+  f.respond({ status: 401, body: { ret: "401", errmsg: "无效 Access Key" } });
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "authentication",
+    message: "无效 Access Key",
+  });
+  f.respond({ status: 429, body: { ret: "429", errmsg: "请求过于频繁" } });
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "rate_limited",
+    message: "请求过于频繁",
+  });
+  f.respond({ status: 404, body: { ret: "404", errmsg: "任务不存在" } });
+  await assert.rejects(provider.video!.query(queryInput, f.ctx), {
+    code: "not_found",
+    message: "任务不存在",
+  });
   f.respond({ status: 502, body: "<html>bad gateway</html>" });
-  await assert.rejects(provider.video!.submit(f.input, f.ctx), /invalid JSON/);
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "unavailable",
+    message: /invalid JSON/,
+  });
+  f.respond({ status: 200, body: "<html>unexpected</html>" });
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "invalid_response",
+    message: /invalid JSON/,
+  });
   f.ctx.secrets.get = async () => null;
-  await assert.rejects(provider.video!.submit(f.input, f.ctx), /Access Key/);
+  await assert.rejects(provider.video!.submit(f.input, f.ctx), {
+    code: "configuration_required",
+    message: /Access Key/,
+  });
 });
