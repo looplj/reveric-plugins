@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { packPlugin } from 'reveric-plugin-sdk/build';
 import { unzipSync, strFromU8 } from 'fflate';
@@ -8,12 +9,27 @@ import semver from 'semver';
 import { sha256, nextVersion } from './catalog.mjs';
 import { releaseBody, releaseMarker } from './github.mjs';
 
+/// 跑插件的 `npm test`。
+///
+/// **不能直接 spawn `npm.cmd`**：Node 18.20.2 起禁止不经 shell 执行 `.cmd`
+/// （CVE-2024-27980 的修复），Windows 上必抛 `spawnSync npm.cmd EINVAL`。
+/// `shell: true` 能跑但会触发 DEP0190（参数不转义），所以这里改用当前 Node
+/// 执行 npm 自己的入口脚本，和 `npm` 命令走同一条路。
+export function npmCommand() {
+  if (process.platform !== 'win32') {
+    return ['npm', []];
+  }
+  const cli = join(dirname(process.execPath), 'node_modules', 'npm', 'bin', 'npm-cli.js');
+  return existsSync(cli) ? [process.execPath, [cli]] : ['npm', []];
+}
+
 export function runTests(root, plugin) {
   const env = { ...process.env };
   // Nested node:test processes otherwise inherit the parent runner context and
   // silently skip the plugin's tests (including in our integration tests).
   delete env.NODE_TEST_CONTEXT;
-  execFileSync(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['test', '--prefix', plugin.directory], {
+  const [command, prefix] = npmCommand();
+  execFileSync(command, [...prefix, 'test', '--prefix', plugin.directory], {
     cwd: root, stdio: 'inherit', timeout: 180_000, env,
   });
 }
