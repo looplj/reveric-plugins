@@ -1,0 +1,13 @@
+{
+  "name": "@reveric-plugins/flova",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node test/run.mjs",
+    "build": "reveric-plugin build",
+    "pack": "reveric-plugin pack"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}
