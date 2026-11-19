@@ -1,0 +1,52 @@
+{
+  "id": "reveric.flova",
+  "name": {
+    "en": "Flova - Video",
+    "zh-CN": "Flova-视频"
+  },
+  "description": {
+    "en": "Generate video with Seedance models on Flova, billed by the platform.",
+    "zh-CN": "在 Flova 上用 Seedance 系列模型生成视频，按平台实际扣费结算。"
+  },
+  "version": "1.0.0",
+  "author": "Reveric",
+  "pluginApiVersion": "^1",
+  "main": "dist/index.js",
+  "provider": {
+    "name": {
+      "en": "Flova - Video",
+      "zh-CN": "Flova-视频"
+    },
+    "settings": {
+      "fields": {
+        "apiKey": {
+          "type": "secret",
+          "title": "API Key",
+          "description": {
+            "en": "Bearer token from the Flova CLI credentials (~/.flova/credentials.yaml).",
+            "zh-CN": "Flova CLI 的登录 token，在 ~/.flova/credentials.yaml 里。"
+          },
+          "required": true
+        },
+        "apiBase": {
+          "type": "string",
+          "title": "API Base",
+          "description": {
+            "en": "Defaults to https://service.flova.ai/api/agent/v3. Change only for a proxy.",
+            "zh-CN": "默认 https://service.flova.ai/api/agent/v3，只有走代理时才需要改。"
+          },
+          "required": false
+        },
+        "projectId": {
+          "type": "string",
+          "title": "Project ID",
+          "description": {
+            "en": "Optional. A project is created on first use and remembered per instance.",
+            "zh-CN": "可选。不填时首次提交自动建一个项目，按实例记住。"
+          },
+          "required": false
+        }
+      }
+    }
+  }
+}
